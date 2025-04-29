@@ -9,22 +9,19 @@ class InputWindow:
         self.master.title("下班倒计时")
         self.master.configure(bg='#2c3e50')
         
-        self.font_families = self.get_system_fonts()
+        # 创建滚动容器系统
+        self.setup_scroll_system()
         
+        # 初始化变量
         self.end_prompt = tk.StringVar(value="到点儿啦！")
         self.font_color = tk.StringVar(value="#00FF00")
         self.font_size = tk.IntVar(value=48)
-        self.font_family = tk.StringVar(value=self.font_families[0] if self.font_families else "Arial")
+        self.font_family = tk.StringVar(value=self.get_system_fonts()[0] if self.get_system_fonts() else "Arial")
 
-        main_frame = tk.Frame(self.master, bg='#2c3e50')
-        main_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
-
-        self.create_time_section(main_frame)
-        self.create_font_section(main_frame)
-        self.create_preview_section(main_frame)
-        self.create_prompt_section(main_frame)
-        self.create_control_buttons(main_frame)
+        # 创建内容框架
+        self.create_widgets()
         
+        # 初始化界面样式
         self.update_preview_style()
 
     def get_system_fonts(self):
@@ -34,6 +31,51 @@ class InputWindow:
                 fonts.append(family)
         fonts.sort()
         return fonts
+
+    def setup_scroll_system(self):
+        """创建滚动容器系统"""
+        self.canvas = tk.Canvas(self.master, bg='#2c3e50')
+        self.canvas.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+        
+        self.scrollbar = ttk.Scrollbar(
+            self.master, 
+            orient=tk.VERTICAL, 
+            command=self.canvas.yview
+        )
+        self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        self.canvas.configure(yscrollcommand=self.scrollbar.set)
+        
+        self.main_frame = tk.Frame(self.canvas, bg='#2c3e50')
+        self.canvas_window = self.canvas.create_window(
+            (0, 0), 
+            window=self.main_frame, 
+            anchor=tk.NW
+        )
+        
+        self.bind_scroll_events()
+
+    def bind_scroll_events(self):
+        self.main_frame.bind("<Configure>", self.on_frame_configure)
+        self.canvas.bind("<Configure>", self.on_canvas_configure)
+        self.canvas.bind_all("<MouseWheel>", self.on_mousewheel)
+
+    def on_frame_configure(self, event):
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+
+    def on_canvas_configure(self, event):
+        self.canvas.itemconfig(self.canvas_window, width=event.width)
+
+    def on_mousewheel(self, event):
+        self.canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+
+    def create_widgets(self):
+        """创建所有界面组件"""
+        self.create_time_section(self.main_frame)
+        self.create_font_section(self.main_frame)
+        self.create_preview_section(self.main_frame)
+        self.create_prompt_section(self.main_frame)
+        self.create_control_buttons(self.main_frame)
 
     def create_time_section(self, parent):
         time_frame = tk.LabelFrame(parent, text="⏰ 时间设置", bg='#2c3e50', fg='white')
@@ -82,7 +124,7 @@ class InputWindow:
         self.font_combo = ttk.Combobox(
             family_frame, 
             textvariable=self.font_family,
-            values=self.font_families,
+            values=self.get_system_fonts(),
             state="readonly",
             width=25
         )
@@ -172,10 +214,6 @@ class InputWindow:
         )
         self.start_btn.pack(pady=15, fill=tk.X)
 
-    def on_close(self):
-        """关闭主窗口并退出程序"""
-        self.master.destroy()
-
     def choose_color(self):
         color = colorchooser.askcolor(initialcolor=self.font_color.get())
         if color and color[1]:
@@ -205,7 +243,7 @@ class InputWindow:
                 self.font_size.get(),
                 self.font_family.get(),
                 self.end_prompt.get(),
-                self.master  # 传递主窗口引用
+                self.master
             )
             
         except Exception as e:
@@ -237,10 +275,8 @@ class CountdownWindow:
         )
         self.display.pack(expand=True, pady=20)
         
-        # 初始化拖拽相关属性
         self.drag_data = {"x": 0, "y": 0, "dragging": False}
         
-        # 绑定事件
         self.root.bind("<ButtonPress-1>", self.start_drag)
         self.root.bind("<B1-Motion>", self.drag_window)
         self.root.bind("<ButtonRelease-1>", self.stop_drag)
@@ -291,7 +327,7 @@ class CountdownWindow:
         self.drag_data["dragging"] = False
 
     def on_close(self):
-        """关闭当前窗口并退出程序"""
+        """完全退出程序"""
         self.master.destroy()  # 销毁主窗口
         self.root.destroy()    # 销毁倒计时窗口
 
