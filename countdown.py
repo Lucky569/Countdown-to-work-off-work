@@ -261,12 +261,14 @@ class CountdownWindow:
         self.root.attributes('-transparentcolor', '#000000')
         self.root.overrideredirect(True)
         
-        self.remaining = total_seconds
+        # 保存原始目标时间
+        self.target_datetime = datetime.now() + timedelta(seconds=total_seconds)
+        
         self.end_prompt = end_prompt
         
         self.display = tk.Label(
             self.root, 
-            text=self.format_time(self.remaining),
+            text=self.format_time(total_seconds),
             font=(font_family, font_size), 
             fg=font_color,
             bg='#000000',
@@ -291,12 +293,18 @@ class CountdownWindow:
         return f"{h:02d}:{m:02d}:{s:02d}"
 
     def update_display(self):
-        if self.remaining > 0:
-            self.remaining -= 1
-            self.display.config(text=self.format_time(self.remaining))
-            self.root.after(1000, self.update_display)
-        else:
+        """自动对齐系统时间的核心方法"""
+        current_time = datetime.now()
+        delta = self.target_datetime - current_time
+        remaining = delta.total_seconds()
+        
+        if remaining <= 0:
             self.display.config(text=self.end_prompt)
+            self.root.after_cancel(self.update_display)
+        else:
+            # 动态计算剩余时间并更新显示
+            self.display.config(text=self.format_time(int(remaining)))
+            self.root.after(1000, self.update_display)
 
     def show_context_menu(self, event):
         menu = Menu(self.root, tearoff=0)
